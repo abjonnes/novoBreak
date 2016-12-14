@@ -1,17 +1,16 @@
 #!/bin/bash
 
-if [ $# != 5 -a $# != 6 ]; then
-	echo $0 \<novoBreak_exe_dir\> \<ref\> \<tumor_bam\> \<normal_bam\> \<n_CPUs:INT\> \[outputdir:-PWD\]
+if [ $# != 4 -a $# != 5 ]; then
+	echo $0 \<novoBreak_exe_dir\> \<ref\> \<tumor_bam\> \<n_CPUs:INT\> \[outputdir:-PWD\]
 	exit 1
 fi
 
 nbbin=`readlink -f $1`
 ref=`readlink -f $2`
 tumor_bam=`readlink -f $3`
-normal_bam=`readlink -f $4`
-n_cpus=$5
-if [ $# == 6 ]; then
-	output=`readlink -f $6`
+n_cpus=$4
+if [ $# == 5 ]; then
+	output=`readlink -f $5`
 fi
 novobreak=$nbbin/novoBreak
 bwa=$nbbin/bwa
@@ -19,18 +18,18 @@ samtools=$nbbin/samtools
 
 lastdir=`pwd`
 
-if [ $# == 6 ]; then
+if [ $# == 5 ]; then
 	mkdir $output
 	cd $output
 fi
-$novobreak -i $tumor_bam -c $normal_bam -r $ref  -o kmer.stat 
+$novobreak -i $tumor_bam -r $ref -o kmer.stat 
 #$samtools collate somaticreads.bam somaticreads.srt
 
 mkdir group_reads
 cd group_reads
 #$samtools view -h ../somaticreads.srt.bam | perl $nbbin/fetch_discordant.pl - $tumor_bam > discordant.sam
-$samtools bam2fq -1 read1.fq -2 read2.fq ../somaticreads.bam
-perl $nbbin/group_bp_reads.pl ../kmer.stat read1.fq read2.fq  > bp_reads.txt
+$samtools bam2fq ../somaticreads.bam > read.fq
+perl $nbbin/group_bp_reads.pl ../kmer.stat read.fq > bp_reads.txt
 cls=`tail -1 bp_reads.txt | cut -f1`
 rec=`echo $cls/$n_cpus | bc`
 rec=$((rec+1))
@@ -63,7 +62,7 @@ split -l $rec ../ssake.pass.vcf # set proper split parameters when needed
 for file in x??
 do
 	echo $file
-	perl $nbbin/infer_bp_v4.pl $file $tumor_bam $normal_bam > $file.sp.vcf &
+	perl $nbbin/infer_bp_v4.pl $file $tumor_bam > $file.sp.vcf &
 done
 wait
 cd ..

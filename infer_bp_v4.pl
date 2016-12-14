@@ -6,9 +6,8 @@ use strict;
 use warnings;
 use English;
 
-my $vcf = shift or die "Usage: $0 <vcf> <tumor.bam> <normal.bam>\n";
-my $tbam = shift or die "Usage: $0 <vcf> <tumor.bam> <normal.bam>\n";
-my $nbam = shift or die "Usage: $0 <vcf> <tumor.bam> <normal.bam>\n";
+my $vcf = shift or die "Usage: $0 <vcf> <tumor.bam>\n";
+my $tbam = shift or die "Usage: $0 <vcf> <tumor.bam>\n";
 
 open IN, $vcf or die $!;
 while (<IN>) {
@@ -42,13 +41,6 @@ while (<IN>) {
 	seek $fh, 0, 0;
 	my $dr1_tum = count_dr(\$line, $fh, $len);
 	close $fh;
-	system("samtools", "view", $nbam, $chr1.":".$beg."-".$fin, "-o", "$PID.regionsam2.tmp");
-#	`samtools view $nbam $e[0]:$e[1]-$e[1] > regionsam2.tmp`;
-	open $fh , "$PID.regionsam2.tmp" or die $!;
-	my @pos1_nor = count_sp($fh, $e[1]);
-	seek $fh, 0, 0;
-	my $dr1_nor = count_dr(\$line, $fh, $len);
-	close $fh;
 	system("samtools", "view", $tbam, $chr2.":".$beg2."-".$fin2, "-o", "$PID.regionsam2.tmp");
 #	`samtools view $tbam $e[0]:$e[1]-$e[1] > regionsam2.tmp`;
 	open $fh , "$PID.regionsam2.tmp" or die $!;
@@ -56,14 +48,7 @@ while (<IN>) {
 	seek $fh, 0, 0;
 	my $dr2_tum = count_dr(\$line, $fh, $len);
 	close $fh;
-	system("samtools", "view", $nbam, $chr2.":".$beg2."-".$fin2, "-o", "$PID.regionsam2.tmp");
-#	`samtools view $nbam $e[0]:$e[1]-$e[1] > regionsam2.tmp`;
-	open $fh , "$PID.regionsam2.tmp" or die $!;
-	my @pos2_nor = count_sp($fh, $end);
-	seek $fh, 0, 0;
-	my $dr2_nor = count_dr(\$line, $fh, $len);
-	close $fh;
-	print join("\t", ($line, @pos1_tum, @pos1_nor, @pos2_tum, @pos2_nor, $dr1_tum, $dr1_nor, $dr2_tum, $dr2_nor)), "\n";
+	print join("\t", ($line, @pos1_tum, @pos2_tum, $dr1_tum, $dr2_tum)), "\n";
 	`rm $PID.regionsam2.tmp`;
 }
 close IN;

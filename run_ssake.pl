@@ -57,10 +57,10 @@ while (<RD>) {
 		$pre = $e[0];
 		@reads = ();
 	}
-		push @reads, ($e[1], $e[2]);
+		push @reads, $e[1];
 		$pre = $e[0];
 	} else {
-		push @reads, ($e[1], $e[2]);
+		push @reads, $e[1];
 	}
 }
 

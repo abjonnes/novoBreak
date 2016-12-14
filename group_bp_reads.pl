@@ -4,16 +4,15 @@ $| = 1;
 use strict;
 use warnings;
 
-my $kmerfile = shift or die "Usage: $0 <kmer.stat> <germline_novo_kmer_read1.fq> <germline_novo_kmer_read2.fq> \n";
+my $kmerfile = shift or die "Usage: $0 <kmer.stat> <germline_novo_kmer_read.fq> \n";
 
-my $rd1file = shift or die "Usage: $0 <kmer.stat> <germline_novo_kmer_read1.fq> <germline_novo_kmer_read2.fq> \n";
-my $rd2file = shift or die "Usage: $0 <kmer.stat> <germline_novo_kmer_read1.fq> <germline_novo_kmer_read2.fq> \n";
+my $rdfile = shift or die "Usage: $0 <kmer.stat> <germline_novo_kmer_read.fq> \n";
 
 my ($start, $end);
 
 my $id = 0;
 my %kmer2id = ();
-my %id2pair = ();
+my %id2seq = ();
 $start = time;
 printf STDERR "begin kmer2id ...\n";
 open IN, $kmerfile or die $!;
@@ -38,37 +37,22 @@ for (my $i = 0; $i < $id; $i++) {
 	push @ids, $i;
 	push @sz, 1;
 }
-printf STDERR "begin id2pair...\n";
+printf STDERR "begin id2seq...\n";
 $start = time;
-open IN1, $rd1file or die $!;
-open IN2, $rd2file or die $!;
+open IN, $rdfile or die $!;
 
 my @relations = ();
-my ($seq1, $seq2);
-while (<IN1>) {
+my $seq;
+while (<IN>) {
 	if ($. % 4 == 2) {
 		chomp;
-		$seq1 = $_;
+		$seq = $_;
 		{
-			<IN2>;
-			$_ = <IN2>;
-			chomp;
-			$seq2 = $_;
-			$id2pair{$id} = $seq1."_".$seq2;
+			$id2seq{$id} = $seq;
 			push @ids, $id;
 			push @sz, 1;
-			for (my $i = 0; $i <= length($seq1) - $len; $i++) {
-				my $kmer = substr($seq1, $i, $len);
-				if (exists $kmer2id{$kmer}) {
-					#print STDERR ($kmer, " ", $kmer2id{$kmer}, " ", $id, "\n");
-					&union($kmer2id{$kmer}, $id);
-				} elsif (exists $kmer2id{&rev_com($kmer)}) {
-					#print STDERR ($kmer, " ", $kmer2id{&rev_com($kmer)}, " ", $id, "\n");
-					&union($kmer2id{&rev_com($kmer)}, $id);
-				}
-			}
-			for (my $i = 0; $i <= length($seq2) - $len; $i++) {
-				my $kmer = substr($seq2, $i, $len);
+			for (my $i = 0; $i <= length($seq) - $len; $i++) {
+				my $kmer = substr($seq, $i, $len);
 				if (exists $kmer2id{$kmer}) {
 					#print STDERR ($kmer, " ", $kmer2id{$kmer}, " ", $id, "\n");
 					&union($kmer2id{$kmer}, $id);
@@ -78,16 +62,13 @@ while (<IN1>) {
 				}
 			}
 			$id++;
-			<IN2>;
-			<IN2>;
 		}
 	}
 }
 
-close IN1;
-close IN2;
+close IN;
 $end = time;
-printf STDERR "id2pair takes %d seconds\n", $end - $start;
+printf STDERR "id2seq takes %d seconds\n", $end - $start;
 
 #printf STDERR "begin clustering ...\n";
 
@@ -117,24 +98,24 @@ for my $i (@idmap) {
 	if ($i->{newid} != $pre) {
 		if (scalar @holder >= 3) {
 			$group ++;
-			&print_pair($group, \@holder);
+			&print_seq($group, \@holder);
 		}
 		@holder = ();
 		$pre = $i->{newid};
 		if ($i->{oldid} >= $kmer_num) {
-			my $pair = $id2pair{$i->{oldid}};
-			push @holder, $pair;
+			my $seq = $id2seq{$i->{oldid}};
+			push @holder, $seq;
 		} 
 	} else {
 		if ($i->{oldid} >= $kmer_num) {
-			my $pair = $id2pair{$i->{oldid}};
-			push @holder, $pair;
+			my $seq = $id2seq{$i->{oldid}};
+			push @holder, $seq;
 		} 
 	}
 }
 		if (scalar @holder >= 3) {
 			$group ++;
-			&print_pair($group, \@holder);
+			&print_seq($group, \@holder);
 		}
 $end = time;
 printf STDERR "Outputting results takes %d seconds\n", $end - $start;
@@ -142,13 +123,12 @@ printf STDERR "Finished\n";
 
 1;
 
-sub print_pair {
+sub print_seq {
 	my $gid = shift;
 	my $group = shift;
 	
-	foreach my $pair (@$group) {
-		my ($seq1, $seq2) = split /_/, $pair;
-		print join("\t", ($gid, $seq1, $seq2)), "\n";
+	foreach my $seq (@$group) {
+		print join("\t", ($gid, $seq)), "\n";
 	}
 }
 
